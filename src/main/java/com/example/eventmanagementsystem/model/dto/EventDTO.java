@@ -1,12 +1,11 @@
-package com.example.eventmanagementsystem.model.collections;
+package com.example.eventmanagementsystem.model.dto;
 
+import com.example.eventmanagementsystem.model.collections.Comment;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import jakarta.persistence.Id;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -14,15 +13,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Document(collection = "events")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class Event {
+public class EventDTO {
 
-    @Id
     private String id;
     private String title;
     private String description;
