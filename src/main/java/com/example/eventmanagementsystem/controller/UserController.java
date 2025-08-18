@@ -13,10 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -33,6 +30,14 @@ public class UserController {
         return ResponseEntity.ok(new InfoResponse<>(true,
                 "User information retrieved successfully.",
                 userService.getAccountInfo(securityUser.getUser().getId())));
+    }
+
+    @Operation(summary = "Get user details by id", description = "Gets the details of a user.")
+    @GetMapping("/{id}")
+    public ResponseEntity<InfoResponse<UserDTO>> getUserById(@PathVariable Long id){
+        return ResponseEntity.ok(new InfoResponse<>(true,
+                "User information retrieved successfully.",
+                userService.getAccountInfo(id)));
     }
 
     @Operation(summary = "Get user enrollments", description = "Gets the enrollments of a user.")

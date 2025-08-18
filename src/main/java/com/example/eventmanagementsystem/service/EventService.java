@@ -18,6 +18,9 @@ import com.example.eventmanagementsystem.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.bson.Document;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -27,7 +30,6 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -42,7 +44,7 @@ public class EventService {
     private final EnrollmentMapper enrollmentMapper;
     private final MongoTemplate mongoTemplate;
 
-    @Transactional
+    @CachePut(value = "EVENT_CACHE", key = "#result.id")
     public EventDTO createEvent(Long id, EventCreateRequest eventCreateRequest) {
         Event event = new Event();
         event.setOrganizerId(id);
@@ -54,7 +56,7 @@ public class EventService {
         return eventMapper.mapIntoDTO(savedEvent);
     }
 
-    @Transactional
+    @CachePut(value = "EVENT_CACHE", key = "#result.id")
     public EventDTO updateEvent(Long userId, String eventId, EventCreateRequest request) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow();
@@ -84,6 +86,7 @@ public class EventService {
         return eventMapper.mapIntoDTO(updatedEvent);
     }
 
+    @CachePut(value = "ENROLLMENT_CACHE", key = "#result.id")
     public EnrollmentDTO enrollUserForCourse(Long userId, String eventId) {
         if(Objects.nonNull(enrollmentRepository.findEnrollmentsByUser_IdAndEventId(userId, eventId))){
             throw new ForbiddenAccessException("You are already enrolled in this event!");
@@ -108,17 +111,20 @@ public class EventService {
         return enrollmentMapper.mapIntoDTO(savedEnrollment);
     }
 
-    public EventDTO getEventDetails(@NotBlank String eventId) {
+    @Cacheable(value = "EVENT_CACHE", key = "#eventId")
+    public EventDTO getEventDetails(String eventId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow();
         return eventMapper.mapIntoDTO(event);
     }
 
+    @Cacheable(value = "ALL_EVENTS_CACHE", key = "'AllEvents'")
     public MyPage<EventDTO> getAllEvents(int pageNumber, int pageSize) {
         Page<Event> allEvents = eventRepository.findAll(PageRequest.of(pageNumber, pageSize));
         return new MyPage<>(allEvents.map(eventMapper::mapIntoDTO));
     }
 
+    @Cacheable(value = "UPCOMING_EVENTS_CACHE", key = "'UpcomingEvents'")
     public MyPage<EventDTO> getUpcomingEvents(int pageNumber, int pageSize) {
         MatchOperation matchOperation = Aggregation
                 .match(Criteria.where("date").gt(LocalDateTime.now()));
@@ -144,6 +150,7 @@ public class EventService {
                 .build();
     }
 
+    @Cacheable(value = "NameFilteredEvents", key = "#name")
     public MyPage<EventDTO> searchEventsByName(String name, int pageNumber, int pageSize) {
         MatchOperation matchOperation = Aggregation
                 .match(Criteria.where("title").regex(name, "i"));
@@ -161,5 +168,15 @@ public class EventService {
                 .pageSize(pageSize)
                 .currentPage(pageNumber)
                 .build();
+    }
+
+    public List<Document> getEventCountsByOrganizers() {
+        GroupOperation groupOperation = Aggregation
+                .group("organizerId")
+                .count().as("count");
+        SortOperation sortOperation = Aggregation
+                .sort(Sort.Direction.DESC, "count");
+        Aggregation aggregation = Aggregation.newAggregation(groupOperation, sortOperation);
+        return mongoTemplate.aggregate(aggregation, Event.class, Document.class).getMappedResults();
     }
 }

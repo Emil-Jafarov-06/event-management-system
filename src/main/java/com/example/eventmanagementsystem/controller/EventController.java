@@ -8,6 +8,7 @@ import com.example.eventmanagementsystem.model.request.EventCreateRequest;
 import com.example.eventmanagementsystem.model.response.InfoResponse;
 import com.example.eventmanagementsystem.security.SecurityUser;
 import com.example.eventmanagementsystem.service.EventService;
+import com.example.eventmanagementsystem.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 public class EventController {
 
     private final EventService eventService;
+    private final UserService userService;
 
     @Operation(summary = "Get all events", description = "Gets all the events.")
     @GetMapping("/all")
@@ -43,6 +45,16 @@ public class EventController {
                 eventService.getEventDetails(eventId)));
     }
 
+    @Operation(summary = "Get events by organizer id", description = "Gets the events created by an organizer.")
+    @GetMapping("/by/{organizer-id}")
+    public ResponseEntity<InfoResponse<MyPage<EventDTO>>> getEventsByOrganizerId(@RequestParam(defaultValue = "0") int pageNumber,
+                                                                                 @RequestParam(defaultValue = "10") int pageSize,
+                                                                                 @PathVariable("organizer-id") Long organizerId){
+        return ResponseEntity.ok(new InfoResponse<>(true,
+                "Events by organizer fetched.",
+                userService.getOrganizedEvents(organizerId, pageNumber, pageSize)));
+    }
+
     @Operation(summary = "Get upcoming events", description = "Gets upcoming events in order.")
     @GetMapping("/upcoming")
     public ResponseEntity<InfoResponse<MyPage<EventDTO>>> getUpcomingEvents(@RequestParam(defaultValue = "0") int pageNumber,
@@ -52,6 +64,7 @@ public class EventController {
                 eventService.getUpcomingEvents(pageNumber, pageSize)));
     }
 
+    @Operation(summary = "Search for events", description = "Search for events by name.")
     @GetMapping("/search/{name}")
     public ResponseEntity<InfoResponse<MyPage<EventDTO>>> searchEvents(@RequestParam(defaultValue = "0") int pageNumber,
                                                                        @RequestParam(defaultValue = "10") int pageSize,
@@ -63,12 +76,19 @@ public class EventController {
 
     @PreAuthorize("hasRole('ORGANIZER')")
     @Operation(summary = "Create event", description = "Creates a new event. Only available for organizers.")
-    @PostMapping("")
+    @PostMapping
     public ResponseEntity<InfoResponse<EventDTO>> createEvent(@RequestBody @Valid EventCreateRequest request){
         SecurityUser securityUser = (SecurityUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return ResponseEntity.ok(new InfoResponse<>(true,
                 "Event created successfully.",
                 eventService.createEvent(securityUser.getUser().getId(), request)));
+    }
+
+    @GetMapping("/counts-by-organizers")
+    public ResponseEntity<InfoResponse<?>> getEventCountsPerOrganizers(){
+        return ResponseEntity.ok(new InfoResponse<>(true,
+                "Event counts for organizers fetched.",
+                eventService.getEventCountsByOrganizers()));
     }
 
     @Operation(summary = "Add comment to an event", description = "Adds a comment to an existing event. Only available for enrolled users.")

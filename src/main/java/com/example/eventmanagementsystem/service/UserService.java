@@ -13,9 +13,8 @@ import com.example.eventmanagementsystem.model.entity.User;
 import com.example.eventmanagementsystem.repository.EnrollmentRepository;
 import com.example.eventmanagementsystem.repository.EventRepository;
 import com.example.eventmanagementsystem.repository.UserRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springdoc.core.converters.models.Pageable;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -35,18 +34,21 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    @Cacheable(value = "USER_CACHE", key = "#id" )
     public UserDTO getAccountInfo(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow();
         return userMapper.mapIntoDTO(user);
     }
 
+    @Cacheable(value = "USER_ENROLLMENTS", key = "#id")
     public MyPage<EnrollmentDTO> getUserEnrollments(Long id, int pageNumber, int pageSize) {
         Page<Enrollment> enrollments = enrollmentRepository.findEnrollmentsByUser_Id(id, PageRequest.of(pageNumber, pageSize));
         Page<EnrollmentDTO> enrollmentDTOS = enrollments.map(enrollmentMapper::mapIntoDTO);
         return new MyPage<>(enrollmentDTOS);
     }
 
+    @Cacheable(value = "ORGANIZED_EVENTS", key = "#id" )
     public MyPage<EventDTO> getOrganizedEvents(Long id, int pageNumber, int pageSize) {
         Page<Event> events = eventRepository.findAllByOrganizerId(id, PageRequest.of(pageNumber, pageSize));
         return new MyPage<>(events.map(eventMapper::mapIntoDTO));
